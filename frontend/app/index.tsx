@@ -660,64 +660,13 @@ export default function GameGenerator() {
         </View>
 
         <ScrollView style={styles.previewContent}>
-          {/* Animated Game Preview */}
-          <GamePreviewAnimation 
+          {/* AI Video Preview - No overlays, character in scene */}
+          <GameVideoPreview 
             genre={selectedGenre} 
-            controlScheme={controlScheme}
             gameData={generatedGame}
+            prompt={prompt}
+            characterDescription={characterDescription}
           />
-
-          {/* Scene Description */}
-          <View style={styles.sceneDescriptionBox}>
-            <Text style={styles.sceneDescriptionTitle}>Scene Setting</Text>
-            <Text style={styles.sceneDescriptionText}>
-              {generatedGame.schema?.initial_scene?.setting || 'Loading scene...'}
-            </Text>
-          </View>
-
-          {/* Control Layout Preview */}
-          <View style={styles.controlLayoutPreview}>
-            <Text style={styles.controlLayoutTitle}>Control Layout</Text>
-            {controlScheme === 'dpad_buttons' ? (
-              <View style={styles.controlLayoutDisplay}>
-                <View style={styles.controlSide}>
-                  <Text style={styles.controlSideLabel}>Left Hand</Text>
-                  <View style={styles.dpadLarge}>
-                    <View style={styles.dpadUpLarge}><Text style={styles.dpadText}>↑</Text></View>
-                    <View style={styles.dpadMiddle}>
-                      <View style={styles.dpadLeftLarge}><Text style={styles.dpadText}>←</Text></View>
-                      <View style={styles.dpadCenterLarge} />
-                      <View style={styles.dpadRightLarge}><Text style={styles.dpadText}>→</Text></View>
-                    </View>
-                    <View style={styles.dpadDownLarge}><Text style={styles.dpadText}>↓</Text></View>
-                  </View>
-                </View>
-                <View style={styles.controlSide}>
-                  <Text style={styles.controlSideLabel}>Right Hand</Text>
-                  <View style={styles.buttonsLarge}>
-                    <View style={styles.buttonRow}>
-                      <View style={[styles.buttonLarge, { backgroundColor: '#FF6B6B' }]}>
-                        <Text style={styles.buttonLabelLarge}>A</Text>
-                        <Text style={styles.buttonAction}>Shoot</Text>
-                      </View>
-                      <View style={[styles.buttonLarge, { backgroundColor: '#4ECDC4' }]}>
-                        <Text style={styles.buttonLabelLarge}>B</Text>
-                        <Text style={styles.buttonAction}>Jump</Text>
-                      </View>
-                    </View>
-                    <View style={styles.buttonRow}>
-                      <View style={[styles.buttonLarge, { backgroundColor: '#FFE66D' }]}>
-                        <Text style={styles.buttonLabelLarge}>C</Text>
-                        <Text style={styles.buttonAction}>Special</Text>
-                      </View>
-                      <View style={[styles.buttonLarge, { backgroundColor: '#95E1D3' }]}>
-                        <Text style={styles.buttonLabelLarge}>D</Text>
-                        <Text style={styles.buttonAction}>Boost</Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </View>
             ) : (
               <View style={styles.swipeControlsDisplay}>
                 <Text style={styles.swipeInstructions}>
