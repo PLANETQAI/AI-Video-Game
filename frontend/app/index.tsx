@@ -492,7 +492,7 @@ export default function GameGenerator() {
           {/* AI Badge */}
           <View style={styles.aiBadge}>
             <Ionicons name="sparkles" size={14} color="#4ECDC4" />
-            <Text style={styles.aiBadgeText}>Powered by Claude AI</Text>
+            <Text style={styles.aiBadgeText}>Powered By Planet AI</Text>
           </View>
 
           {error && (
