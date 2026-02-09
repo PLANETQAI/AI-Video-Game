@@ -1019,7 +1019,7 @@ export default function GameGenerator() {
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>© 2025 Game Generator • Powered by AI</Text>
+            <Text style={styles.footerText}>© 2025 Planet Q Games • Powered by Planet Q AI</Text>
           </View>
         </ScrollView>
 
