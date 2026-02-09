@@ -489,38 +489,121 @@ async def generate_preview_image(request: GeneratePreviewImageRequest):
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=f"preview-img-{uuid.uuid4()}",
-            system_message="You are an expert game artist. Create high-quality game scene images."
+            system_message="You are an expert AAA game artist specializing in high-fidelity 3D game visuals like Unreal Engine 5 and Unity HDRP quality."
         ).with_model("gemini", "gemini-3-pro-image-preview").with_params(modalities=["image", "text"])
         
-        # Build the prompt based on genre
+        # Detailed genre-specific styles for AAA quality
         genre_styles = {
-            "shooter": "futuristic sci-fi space environment with neon lights, starships, and cosmic backgrounds",
-            "action": "intense battle scene with explosions, dramatic lighting, and powerful warriors",
-            "puzzle": "colorful mystical environment with floating platforms and magical elements",
-            "adventure": "lush jungle or ancient ruins with atmospheric god rays and detailed foliage",
-            "arcade": "vibrant retro-modern environment with bright colors and dynamic elements",
-            "racing": "high-speed track with motion blur, sleek vehicles, and dramatic perspective",
-            "rpg": "epic fantasy landscape with castles, dragons, and magical auras"
+            "shooter": """MILITARY/SCI-FI SHOOTER:
+- Environment: Urban warfare zone OR futuristic space station with destruction
+- Character: Armored soldier with tactical gear, assault rifle, helmet with HUD visor
+- Lighting: Dramatic shadows, muzzle flash effects, volumetric dust and smoke
+- Details: Shell casings, debris, bullet holes, particle effects
+- Camera: Over-the-shoulder third-person view, slight motion blur
+- Reference: Call of Duty, Battlefield, Halo quality""",
+            
+            "racing": """HIGH-SPEED RACING:
+- Environment: Professional race track OR city streets with neon lights at night
+- Vehicle: Sleek sports car/supercar with realistic reflections and paint
+- Lighting: Motion blur streaks, headlight beams, lens flares
+- Details: Tire smoke, sparks from scraping, heat distortion from exhaust
+- Camera: Dynamic chase camera behind the car, sense of extreme speed
+- Reference: Need for Speed, Forza Horizon, Gran Turismo quality""",
+            
+            "sports": """PROFESSIONAL SPORTS:
+- Environment: Packed stadium with crowd, professional field/court with markings
+- Character: Athletic player in team uniform, dynamic action pose
+- Lighting: Stadium floodlights, dramatic shadows, sweat glistening
+- Details: Ball in motion, grass/court texture, scoreboard, cheering fans
+- Camera: Broadcast-style dynamic angle capturing the action
+- Reference: FIFA, NBA 2K, Madden quality""",
+            
+            "adventure": """OPEN WORLD ADVENTURE:
+- Environment: Lush jungle OR ancient ruins OR vast mountain landscape
+- Character: Explorer/adventurer with gear, climbing or exploring
+- Lighting: Golden hour god rays through trees, atmospheric fog
+- Details: Detailed foliage, ancient stonework, wildlife, water reflections
+- Camera: Wide cinematic shot showing scale of environment
+- Reference: Uncharted, Tomb Raider, Horizon quality""",
+            
+            "fighting": """COMBAT FIGHTING:
+- Environment: Arena or street fight location with dramatic backdrop
+- Character: Muscular fighter in combat stance, detailed martial arts pose
+- Lighting: Dramatic rim lighting, energy effects around fists
+- Details: Sweat drops, torn clothing, impact effects, ki/energy auras
+- Camera: Dynamic low angle showing power and intensity
+- Reference: Street Fighter, Tekken, Mortal Kombat quality""",
+            
+            "rpg": """EPIC FANTASY RPG:
+- Environment: Medieval castle OR magical forest OR dragon's lair
+- Character: Armored knight or mage with glowing weapons/staff
+- Lighting: Magical particle effects, torch light, mystical glows
+- Details: Detailed armor engravings, spell effects, floating runes
+- Camera: Epic wide shot with character silhouette against dramatic sky
+- Reference: Elden Ring, God of War, Final Fantasy quality""",
+            
+            "platformer": """3D PLATFORMER:
+- Environment: Colorful floating islands OR vibrant fantasy world
+- Character: Stylized hero character, dynamic jumping pose
+- Lighting: Bright and colorful, soft shadows, magical sparkles
+- Details: Coins/collectibles, bouncy platforms, cartoon-realistic style
+- Camera: Side-angle showing depth and platforms ahead
+- Reference: Super Mario Odyssey, Ratchet & Clank, Crash Bandicoot quality""",
+            
+            "horror": """SURVIVAL HORROR:
+- Environment: Abandoned hospital OR dark forest OR haunted mansion
+- Character: Survivor with flashlight, terrified expression
+- Lighting: Single flashlight beam, deep shadows, fog, moonlight
+- Details: Blood stains, broken furniture, creepy atmosphere, monster silhouette
+- Camera: Close over-shoulder, claustrophobic framing
+- Reference: Resident Evil, Silent Hill, Dead Space quality""",
+            
+            "simulation": """REALISTIC SIMULATION:
+- Environment: Cockpit view OR realistic city OR farm landscape
+- Vehicle/Character: Detailed vehicle interior OR professional setting
+- Lighting: Realistic daylight, accurate reflections, atmospheric scattering
+- Details: Functional instruments, realistic textures, true-to-life scale
+- Camera: First-person or realistic third-person view
+- Reference: Microsoft Flight Simulator, Euro Truck Simulator quality""",
+            
+            "puzzle": """3D PUZZLE GAME:
+- Environment: Abstract geometric space OR mystical temple with mechanisms
+- Elements: Glowing puzzle pieces, energy beams, portals, platforms
+- Lighting: Ethereal glow, color-coded elements, soft ambient light
+- Details: Intricate mechanisms, floating objects, particle trails
+- Camera: Isometric or strategic view showing puzzle layout
+- Reference: Portal, The Witness, Superliminal quality"""
         }
         
-        genre_style = genre_styles.get(request.genre, "detailed game environment")
+        genre_style = genre_styles.get(request.genre, """DETAILED 3D GAME:
+- High-fidelity realistic graphics
+- Dramatic cinematic lighting
+- Rich detailed textures and materials
+- Professional game screenshot quality""")
         
-        prompt = f"""Create a high-fidelity 3D realistic video game screenshot in {request.style} style.
+        prompt = f"""Create an ULTRA HIGH-FIDELITY 3D video game screenshot. This must look like a real AAA game from 2024-2025.
 
-Genre: {request.genre.upper()} GAME
-Scene: {request.scene_description}
-Character: {request.character_description}
-Style: {genre_style}
+GENRE: {request.genre.upper()}
+SCENE DESCRIPTION: {request.scene_description}
+MAIN CHARACTER: {request.character_description}
 
-Requirements:
-- Photo-realistic 3D graphics like AAA video games
-- Volumetric lighting with god rays
-- Rich detailed textures
-- Atmospheric depth and fog
-- Third-person view showing the character from behind
-- Epic cinematic composition
-- 16:9 aspect ratio game screenshot
-- No text or UI elements in the image"""
+VISUAL STYLE REQUIREMENTS:
+{genre_style}
+
+TECHNICAL REQUIREMENTS:
+- Unreal Engine 5 / Unity HDRP level graphics quality
+- Ray-traced reflections and global illumination
+- 8K texture detail visible
+- Physically-based rendering (PBR) materials
+- Subsurface scattering on skin
+- Volumetric lighting and fog
+- Depth of field with bokeh
+- Film grain and chromatic aberration for cinematic feel
+- HDR color grading
+- 16:9 widescreen aspect ratio
+- NO text, NO UI elements, NO watermarks
+
+This should look indistinguishable from a real next-gen video game screenshot."""
 
         msg = UserMessage(text=prompt)
         text, images = await chat.send_message_multimodal_response(msg)
