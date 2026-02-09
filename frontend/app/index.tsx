@@ -1523,6 +1523,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     textAlign: 'center',
+    fontWeight: '600',
+  },
+  genreDescription: {
+    color: '#888',
+    fontSize: 9,
+    textAlign: 'center',
+    marginTop: 2,
   },
   promptHeader: {
     flexDirection: 'row',
