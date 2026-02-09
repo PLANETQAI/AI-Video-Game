@@ -22,244 +22,323 @@ import { StatusBar } from 'expo-status-bar';
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-// Video-Style Game Preview Component - AI Generated Scenes
-const GameVideoPreview = ({ genre, gameData, prompt, characterDescription }: any) => {
-  const [sceneImages, setSceneImages] = useState<string[]>([]);
-  const [currentScene, setCurrentScene] = useState(0);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationStatus, setGenerationStatus] = useState('');
-  const [error, setError] = useState<string | null>(null);
+
+// Playable Game Preview - AI Background + Interactive Character
+const PlayableGamePreview = ({ genre, gameData, prompt, characterDescription }: any) => {
+  // AI Background state
+  const [bgImage, setBgImage] = useState<string | null>(null);
+  const [isLoadingBg, setIsLoadingBg] = useState(false);
   
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  // Game state
+  const [charX, setCharX] = useState(width / 2 - 20);
+  const [charY, setCharY] = useState(180);
+  const [isJumping, setIsJumping] = useState(false);
+  const [isBoosting, setIsBoosting] = useState(false);
+  const [score, setScore] = useState(0);
+  const [health, setHealth] = useState(100);
+  const [bullets, setBullets] = useState<{id: number, x: number, y: number}[]>([]);
+  const [enemies, setEnemies] = useState<{id: number, x: number, y: number}[]>([
+    { id: 1, x: 100, y: 50 },
+    { id: 2, x: 250, y: 80 },
+  ]);
+  const [effects, setEffects] = useState<{id: number, x: number, y: number, type: string}[]>([]);
+  const [activeBtn, setActiveBtn] = useState<string | null>(null);
+  const [activeDpad, setActiveDpad] = useState<string | null>(null);
+  
+  // Animation refs
+  const jumpAnim = useRef(new Animated.Value(0)).current;
+  const boostAnim = useRef(new Animated.Value(0)).current;
+  const characterScale = useRef(new Animated.Value(1)).current;
+  const bulletIdRef = useRef(0);
+  
+  // Game constants
+  const GAME_WIDTH = width - 40;
+  const GAME_HEIGHT = 260;
+  const MOVE_SPEED = 15;
+  const BOOST_SPEED = 28;
 
-  // Generate video scenes based on user's prompt
-  const generateVideoScenes = async () => {
-    if (!gameData?.schema || isGenerating) return;
+  // Generate AI background
+  const generateBackground = async () => {
+    if (bgImage || isLoadingBg) return;
     
-    setIsGenerating(true);
-    setError(null);
-    const newScenes: string[] = [];
-    
-    // Generate multiple scenes that tell a story
-    const scenePrompts = [
-      {
-        description: `Opening shot: ${gameData.schema.initial_scene?.setting || prompt}`,
-        action: 'establishing wide shot, character visible in environment'
-      },
-      {
-        description: `Action shot: ${gameData.schema.initial_scene?.player_action || 'Character in motion'}`,
-        action: 'dynamic action pose, motion blur, dramatic angle'
-      },
-      {
-        description: `Close-up: ${gameData.schema.main_character?.name || 'The hero'} preparing for ${gameData.schema.initial_scene?.mechanic || 'combat'}`,
-        action: 'detailed character shot, intense expression, ready for action'
-      },
-      {
-        description: `Gameplay moment: ${gameData.schema.initial_scene?.success_outcome || 'Epic gameplay scene'}`,
-        action: 'peak action moment, visual effects, cinematic composition'
-      }
-    ];
-
-    for (let i = 0; i < scenePrompts.length; i++) {
-      setGenerationStatus(`Generating scene ${i + 1} of ${scenePrompts.length}...`);
+    setIsLoadingBg(true);
+    try {
+      const sceneDesc = gameData?.schema?.initial_scene?.setting || prompt || 'Epic game environment';
+      const charDesc = characterDescription || gameData?.schema?.main_character?.description || 'Hero';
       
-      try {
-        const response = await fetch(`${API_URL}/api/generate-video-scene`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            genre: genre,
-            scene_description: scenePrompts[i].description,
-            character_description: characterDescription || gameData.schema.main_character?.description,
-            action: scenePrompts[i].action,
-            scene_number: i + 1,
-            total_scenes: scenePrompts.length,
-            user_prompt: prompt
-          }),
-        });
-        
-        const data = await response.json();
-        if (data.success && data.image_data) {
-          newScenes.push(`data:${data.mime_type};base64,${data.image_data}`);
-        }
-      } catch (err) {
-        console.log(`Scene ${i + 1} generation error:`, err);
-      }
-      
-      // Small delay between generations
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-    
-    if (newScenes.length > 0) {
-      setSceneImages(newScenes);
-      startSceneRotation(newScenes.length);
-    } else {
-      setError('Could not generate video scenes. Using placeholder.');
-    }
-    
-    setIsGenerating(false);
-    setGenerationStatus('');
-  };
-
-  // Auto-rotate through scenes like a video
-  const startSceneRotation = (totalScenes: number) => {
-    let sceneIndex = 0;
-    
-    const rotateScene = () => {
-      // Fade out
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start(() => {
-        sceneIndex = (sceneIndex + 1) % totalScenes;
-        setCurrentScene(sceneIndex);
-        
-        // Slide and fade in
-        slideAnim.setValue(20);
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ]).start();
+      const response = await fetch(`${API_URL}/api/generate-preview-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          genre: genre || 'action',
+          scene_description: sceneDesc,
+          character_description: charDesc,
+          style: 'high-fidelity 3D realistic'
+        }),
       });
-    };
-    
-    const interval = setInterval(rotateScene, 4000);
-    return () => clearInterval(interval);
+      
+      const data = await response.json();
+      if (data.success && data.image_data) {
+        setBgImage(`data:${data.mime_type};base64,${data.image_data}`);
+      }
+    } catch (error) {
+      console.log('Background generation error:', error);
+    } finally {
+      setIsLoadingBg(false);
+    }
   };
 
   useEffect(() => {
-    if (gameData?.schema) {
-      generateVideoScenes();
-    }
-  }, [gameData]);
+    generateBackground();
+    
+    // Character idle animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(characterScale, { toValue: 1.02, duration: 600, useNativeDriver: true }),
+        Animated.timing(characterScale, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    ).start();
 
-  const getGenreColors = () => {
-    switch (genre) {
-      case 'shooter': return { primary: '#FF4444', secondary: '#FF8888', bg: '#1a0a0a' };
-      case 'racing': return { primary: '#FFEAA7', secondary: '#FFD93D', bg: '#1a1a0a' };
-      case 'sports': return { primary: '#44FF44', secondary: '#88FF88', bg: '#0a1a0a' };
-      case 'adventure': return { primary: '#45B7D1', secondary: '#7DD3E8', bg: '#0a1a1a' };
-      case 'fighting': return { primary: '#FF6B6B', secondary: '#FF9B9B', bg: '#1a0a0a' };
-      case 'rpg': return { primary: '#DDA0DD', secondary: '#E8C8E8', bg: '#1a0a1a' };
-      case 'platformer': return { primary: '#96CEB4', secondary: '#B8E0CE', bg: '#0a1a0f' };
-      case 'horror': return { primary: '#8B0000', secondary: '#B22222', bg: '#0a0505' };
-      case 'simulation': return { primary: '#87CEEB', secondary: '#ADD8E6', bg: '#0a0f1a' };
-      case 'puzzle': return { primary: '#4ECDC4', secondary: '#7EDDD6', bg: '#0a1a1a' };
-      default: return { primary: '#4ECDC4', secondary: '#7EDDD6', bg: '#0a0a0f' };
+    // Enemy movement
+    const enemyInterval = setInterval(() => {
+      setEnemies(prev => prev.map(enemy => ({
+        ...enemy,
+        x: Math.max(20, Math.min(GAME_WIDTH - 40, enemy.x + (Math.sin(Date.now() / 500 + enemy.id) * 2))),
+        y: Math.max(30, Math.min(120, enemy.y + (Math.cos(Date.now() / 700 + enemy.id) * 1))),
+      })));
+    }, 50);
+
+    // Bullet movement
+    const bulletInterval = setInterval(() => {
+      setBullets(prev => {
+        const updated = prev.map(b => ({ ...b, y: b.y - 12 })).filter(b => b.y > -20);
+        
+        updated.forEach(bullet => {
+          setEnemies(currentEnemies => {
+            const hitEnemy = currentEnemies.find(e => 
+              Math.abs(bullet.x - e.x) < 30 && Math.abs(bullet.y - e.y) < 30
+            );
+            if (hitEnemy) {
+              setEffects(prev => [...prev, { id: Date.now(), x: hitEnemy.x, y: hitEnemy.y, type: 'explosion' }]);
+              setScore(s => s + 100);
+              return currentEnemies.filter(e => e.id !== hitEnemy.id);
+            }
+            return currentEnemies;
+          });
+        });
+        
+        return updated;
+      });
+    }, 30);
+
+    // Respawn enemies
+    const respawnInterval = setInterval(() => {
+      setEnemies(prev => {
+        if (prev.length < 3) {
+          return [...prev, { id: Date.now(), x: Math.random() * (GAME_WIDTH - 60) + 30, y: Math.random() * 80 + 30 }];
+        }
+        return prev;
+      });
+    }, 3000);
+
+    // Clear effects
+    const effectInterval = setInterval(() => {
+      setEffects(prev => prev.filter(e => Date.now() - e.id < 500));
+    }, 100);
+
+    return () => {
+      clearInterval(enemyInterval);
+      clearInterval(bulletInterval);
+      clearInterval(respawnInterval);
+      clearInterval(effectInterval);
+    };
+  }, []);
+
+  // D-Pad controls
+  const handleDpadPress = (direction: string) => {
+    setActiveDpad(direction);
+    const speed = isBoosting ? BOOST_SPEED : MOVE_SPEED;
+    
+    switch (direction) {
+      case 'up': setCharY(y => Math.max(50, y - speed)); break;
+      case 'down': setCharY(y => Math.min(GAME_HEIGHT - 60, y + speed)); break;
+      case 'left': setCharX(x => Math.max(20, x - speed)); break;
+      case 'right': setCharX(x => Math.min(GAME_WIDTH - 40, x + speed)); break;
     }
   };
 
-  const colors = getGenreColors();
+  const handleDpadRelease = () => setActiveDpad(null);
+
+  // Action buttons
+  const handleButtonPress = (button: string) => {
+    setActiveBtn(button);
+    
+    switch (button) {
+      case 'A': // Shoot
+        setEffects(prev => [...prev, { id: Date.now(), x: charX + 15, y: charY - 10, type: 'muzzle' }]);
+        setBullets(prev => [...prev, { id: bulletIdRef.current++, x: charX + 12, y: charY - 10 }]);
+        break;
+        
+      case 'B': // Jump
+        if (!isJumping) {
+          setIsJumping(true);
+          Animated.sequence([
+            Animated.timing(jumpAnim, { toValue: -60, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+            Animated.timing(jumpAnim, { toValue: 0, duration: 280, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+          ]).start(() => setIsJumping(false));
+        }
+        break;
+        
+      case 'C': // Special
+        setEffects(prev => [...prev, { id: Date.now(), x: charX + 15, y: charY - 10, type: 'special' }]);
+        [-20, 0, 20].forEach((offset, i) => {
+          setTimeout(() => {
+            setBullets(prev => [...prev, { id: bulletIdRef.current++, x: charX + 12 + offset, y: charY - 10 }]);
+          }, i * 40);
+        });
+        break;
+        
+      case 'D': // Boost
+        setIsBoosting(true);
+        Animated.timing(boostAnim, { toValue: 1, duration: 100, useNativeDriver: true }).start();
+        setTimeout(() => {
+          setIsBoosting(false);
+          Animated.timing(boostAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+        }, 1500);
+        break;
+    }
+  };
+
+  const handleButtonRelease = () => setActiveBtn(null);
+
+  const getColors = () => {
+    const colorMap: {[key: string]: {primary: string, accent: string}} = {
+      shooter: { primary: '#FF4444', accent: '#00FFFF' },
+      racing: { primary: '#FFEAA7', accent: '#FF6B6B' },
+      sports: { primary: '#44FF44', accent: '#FFFFFF' },
+      adventure: { primary: '#45B7D1', accent: '#FFD700' },
+      fighting: { primary: '#FF6B6B', accent: '#FFFF00' },
+      rpg: { primary: '#DDA0DD', accent: '#00FF00' },
+      platformer: { primary: '#96CEB4', accent: '#FF69B4' },
+      horror: { primary: '#8B0000', accent: '#00FF00' },
+      simulation: { primary: '#87CEEB', accent: '#FFA500' },
+      puzzle: { primary: '#4ECDC4', accent: '#FF00FF' },
+    };
+    return colorMap[genre] || { primary: '#4ECDC4', accent: '#FFD700' };
+  };
+
+  const colors = getColors();
 
   return (
-    <View style={styles.videoPreviewContainer}>
-      {/* Main Video Display - No overlays, just the AI generated scene */}
-      <View style={styles.videoScreen}>
-        {isGenerating ? (
-          <LinearGradient colors={[colors.bg, '#000']} style={styles.videoPlaceholder}>
-            <View style={styles.generatingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.generatingTitle}>Generating Your Game Video</Text>
-              <Text style={styles.generatingStatus}>{generationStatus}</Text>
-              <View style={styles.generatingDetails}>
-                <Text style={styles.generatingDetail}>Genre: {genre?.toUpperCase()}</Text>
-                <Text style={styles.generatingDetail}>Creating cinematic scenes...</Text>
-              </View>
-            </View>
-          </LinearGradient>
-        ) : sceneImages.length > 0 ? (
-          <Animated.View 
-            style={[
-              styles.sceneContainer,
-              { 
-                opacity: fadeAnim,
-                transform: [{ translateX: slideAnim }]
-              }
-            ]}
-          >
-            <Image 
-              source={{ uri: sceneImages[currentScene] }} 
-              style={styles.sceneImage}
-              resizeMode="cover"
-            />
-            {/* Cinematic bars for video feel */}
-            <View style={styles.cinematicBarTop} />
-            <View style={styles.cinematicBarBottom} />
-            
-            {/* Scene indicator */}
-            <View style={styles.sceneIndicator}>
-              {sceneImages.map((_, index) => (
-                <View 
-                  key={index}
-                  style={[
-                    styles.sceneIndicatorDot,
-                    currentScene === index && { backgroundColor: colors.primary }
-                  ]}
-                />
-              ))}
-            </View>
-          </Animated.View>
+    <View style={styles.playableContainer}>
+      {/* Game Screen */}
+      <View style={styles.gameScreenPlayable}>
+        {/* AI Background */}
+        {bgImage ? (
+          <Image source={{ uri: bgImage }} style={styles.aiBgImage} resizeMode="cover" />
         ) : (
-          <LinearGradient colors={[colors.bg, '#000']} style={styles.videoPlaceholder}>
-            <View style={styles.placeholderContent}>
-              <Ionicons name="videocam" size={50} color={colors.primary} />
-              <Text style={styles.placeholderTitle}>Video Preview</Text>
-              <Text style={styles.placeholderText}>
-                {error || 'AI-generated game footage will appear here'}
-              </Text>
-              {gameData?.schema?.initial_scene?.setting && (
-                <View style={styles.scenePreviewText}>
-                  <Text style={styles.sceneLabel}>Scene:</Text>
-                  <Text style={styles.sceneDescription}>
-                    {gameData.schema.initial_scene.setting}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </LinearGradient>
+          <LinearGradient colors={['#0a0a1a', '#1a1a3a', '#0a0a1a']} style={StyleSheet.absoluteFill} />
         )}
+        
+        {/* Loading */}
+        {isLoadingBg && (
+          <View style={styles.bgLoadingOverlay}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.bgLoadingText}>Generating 3D Scene...</Text>
+          </View>
+        )}
+        
+        {/* Enemies */}
+        {enemies.map(enemy => (
+          <View key={enemy.id} style={[styles.enemySprite, { left: enemy.x, top: enemy.y }]}>
+            <View style={styles.enemyGlowSprite} />
+            <View style={styles.enemyBodySprite} />
+          </View>
+        ))}
+        
+        {/* Bullets */}
+        {bullets.map(bullet => (
+          <View key={bullet.id} style={[styles.bulletSprite, { left: bullet.x, top: bullet.y, backgroundColor: colors.accent }]} />
+        ))}
+        
+        {/* Effects */}
+        {effects.map(effect => (
+          <View key={effect.id} style={[styles.effectSprite, { left: effect.x - 15, top: effect.y - 15 }]}>
+            <View style={[styles.effectCircle, { backgroundColor: effect.type === 'explosion' ? '#FF6600' : colors.accent }]} />
+          </View>
+        ))}
+        
+        {/* Player */}
+        <Animated.View style={[styles.playerSprite, { left: charX, top: charY, transform: [{ translateY: jumpAnim }, { scale: characterScale }] }]}>
+          <View style={[styles.playerGlow, { backgroundColor: colors.primary }]} />
+          {isBoosting && <Animated.View style={[styles.boostRing, { opacity: boostAnim, borderColor: colors.accent }]} />}
+          <View style={[styles.playerHead, { backgroundColor: colors.primary }]} />
+          <View style={[styles.playerBody, { backgroundColor: colors.primary }]} />
+          {isBoosting && <View style={[styles.jetFlame, { backgroundColor: colors.accent }]} />}
+        </Animated.View>
+        
+        {/* Minimal HUD */}
+        <View style={styles.minimalHud}>
+          <View style={styles.healthBarBg}>
+            <View style={[styles.healthBarFg, { width: `${health}%` }]} />
+          </View>
+          <Text style={[styles.scoreText, { color: colors.accent }]}>{score.toString().padStart(6, '0')}</Text>
+        </View>
+        
+        <View style={[styles.genreTag, { backgroundColor: colors.primary + '50' }]}>
+          <Text style={[styles.genreTagText, { color: colors.primary }]}>{genre?.toUpperCase()}</Text>
+        </View>
       </View>
 
-      {/* Video Info Bar - Minimal, no game controls */}
-      <View style={styles.videoInfoBar}>
-        <View style={styles.videoInfoLeft}>
-          <View style={[styles.genreBadge, { backgroundColor: colors.primary + '30' }]}>
-            <Text style={[styles.genreBadgeText, { color: colors.primary }]}>
-              {genre?.toUpperCase()} GAME
-            </Text>
-          </View>
-        </View>
-        <View style={styles.videoInfoCenter}>
-          <Text style={styles.videoTitle}>
-            {gameData?.game?.name || 'Generated Game'}
-          </Text>
-        </View>
-        <View style={styles.videoInfoRight}>
-          <TouchableOpacity 
-            style={styles.regenerateBtn}
-            onPress={generateVideoScenes}
-            disabled={isGenerating}
-          >
-            <Ionicons name="refresh" size={18} color="#FFF" />
+      {/* Controls */}
+      <View style={styles.controlsRow}>
+        {/* D-Pad */}
+        <View style={styles.dpadArea}>
+          <TouchableOpacity style={[styles.dpadBtn, activeDpad === 'up' && { backgroundColor: colors.primary }]} onPressIn={() => handleDpadPress('up')} onPressOut={handleDpadRelease}>
+            <Ionicons name="caret-up" size={18} color={activeDpad === 'up' ? '#FFF' : '#666'} />
           </TouchableOpacity>
+          <View style={styles.dpadMid}>
+            <TouchableOpacity style={[styles.dpadBtn, activeDpad === 'left' && { backgroundColor: colors.primary }]} onPressIn={() => handleDpadPress('left')} onPressOut={handleDpadRelease}>
+              <Ionicons name="caret-back" size={18} color={activeDpad === 'left' ? '#FFF' : '#666'} />
+            </TouchableOpacity>
+            <View style={styles.dpadCenter} />
+            <TouchableOpacity style={[styles.dpadBtn, activeDpad === 'right' && { backgroundColor: colors.primary }]} onPressIn={() => handleDpadPress('right')} onPressOut={handleDpadRelease}>
+              <Ionicons name="caret-forward" size={18} color={activeDpad === 'right' ? '#FFF' : '#666'} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={[styles.dpadBtn, activeDpad === 'down' && { backgroundColor: colors.primary }]} onPressIn={() => handleDpadPress('down')} onPressOut={handleDpadRelease}>
+            <Ionicons name="caret-down" size={18} color={activeDpad === 'down' ? '#FFF' : '#666'} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.abcdArea}>
+          <View style={styles.abcdRow}>
+            <TouchableOpacity style={[styles.abcdBtn, { backgroundColor: '#FF4444' }, activeBtn === 'A' && styles.abcdPressed]} onPressIn={() => handleButtonPress('A')} onPressOut={handleButtonRelease}>
+              <Text style={styles.abcdLetter}>A</Text>
+              <Text style={styles.abcdLabel}>FIRE</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.abcdBtn, { backgroundColor: '#4ECDC4' }, activeBtn === 'B' && styles.abcdPressed]} onPressIn={() => handleButtonPress('B')} onPressOut={handleButtonRelease}>
+              <Text style={styles.abcdLetter}>B</Text>
+              <Text style={styles.abcdLabel}>JUMP</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.abcdRow}>
+            <TouchableOpacity style={[styles.abcdBtn, { backgroundColor: '#FFD700' }, activeBtn === 'C' && styles.abcdPressed]} onPressIn={() => handleButtonPress('C')} onPressOut={handleButtonRelease}>
+              <Text style={[styles.abcdLetter, { color: '#333' }]}>C</Text>
+              <Text style={[styles.abcdLabel, { color: '#333' }]}>SPECIAL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.abcdBtn, { backgroundColor: '#44FF88' }, activeBtn === 'D' && styles.abcdPressed]} onPressIn={() => handleButtonPress('D')} onPressOut={handleButtonRelease}>
+              <Text style={[styles.abcdLetter, { color: '#333' }]}>D</Text>
+              <Text style={[styles.abcdLabel, { color: '#333' }]}>BOOST</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
   );
 };
 
-// Genre data - All 3D Game Types
-// Genre data - All 3D Game Types
 const GENRES = [
   { id: 'shooter', name: '3D Shooter', icon: 'locate', color: '#FF4444', description: 'FPS/TPS Action' },
   { id: 'racing', name: '3D Racing', icon: 'car-sport', color: '#FFEAA7', description: 'High Speed' },
