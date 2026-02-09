@@ -426,13 +426,16 @@ async def get_genres():
     """Get available game genres"""
     return {
         "genres": [
-            {"id": "action", "name": "Action Games", "icon": "sword", "color": "#FF6B6B"},
-            {"id": "puzzle", "name": "Puzzle Games", "icon": "puzzle", "color": "#4ECDC4"},
-            {"id": "adventure", "name": "Adventure", "icon": "compass", "color": "#45B7D1"},
-            {"id": "arcade", "name": "Arcade", "icon": "gamepad", "color": "#96CEB4"},
-            {"id": "racing", "name": "Racing Game", "icon": "car", "color": "#FFEAA7"},
-            {"id": "rpg", "name": "RPG", "icon": "shield", "color": "#DDA0DD"},
-            {"id": "shooter", "name": "Shooter Game", "icon": "crosshair", "color": "#FF7675"}
+            {"id": "shooter", "name": "3D Shooter", "icon": "crosshair", "color": "#FF4444", "description": "First/Third person shooting action"},
+            {"id": "racing", "name": "3D Racing", "icon": "car", "color": "#FFEAA7", "description": "High-speed racing games"},
+            {"id": "sports", "name": "3D Sports", "icon": "football", "color": "#44FF44", "description": "Football, basketball, soccer games"},
+            {"id": "adventure", "name": "3D Adventure", "icon": "compass", "color": "#45B7D1", "description": "Open world exploration"},
+            {"id": "fighting", "name": "3D Fighting", "icon": "hand-left", "color": "#FF6B6B", "description": "Combat and martial arts"},
+            {"id": "rpg", "name": "3D RPG", "icon": "shield", "color": "#DDA0DD", "description": "Role-playing fantasy games"},
+            {"id": "platformer", "name": "3D Platformer", "icon": "walk", "color": "#96CEB4", "description": "Jump and run games"},
+            {"id": "horror", "name": "3D Horror", "icon": "skull", "color": "#8B0000", "description": "Survival horror games"},
+            {"id": "simulation", "name": "3D Simulation", "icon": "airplane", "color": "#87CEEB", "description": "Flight, driving, life sims"},
+            {"id": "puzzle", "name": "3D Puzzle", "icon": "extension-puzzle", "color": "#4ECDC4", "description": "Brain-teasing challenges"}
         ]
     }
 
