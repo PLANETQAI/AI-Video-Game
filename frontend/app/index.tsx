@@ -667,46 +667,38 @@ export default function GameGenerator() {
             prompt={prompt}
             characterDescription={characterDescription}
           />
-            ) : (
-              <View style={styles.swipeControlsDisplay}>
-                <Text style={styles.swipeInstructions}>
-                  Swipe: Move | Tap: Action | Double Tap: Jump | Long Press: Special
-                </Text>
-              </View>
-            )}
-          </View>
 
           {/* Scene Details */}
           <View style={styles.sceneDetails}>
-            <Text style={styles.sceneDetailsTitle}>Scene Details</Text>
+            <Text style={styles.sceneDetailsTitle}>Game Details</Text>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Story:</Text>
+              <Text style={styles.detailValue}>
+                {generatedGame.schema?.story_premise || 'N/A'}
+              </Text>
+            </View>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Character:</Text>
+              <Text style={styles.detailValue}>
+                {generatedGame.schema?.main_character?.name || 'N/A'}
+              </Text>
+            </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Mechanic:</Text>
               <Text style={styles.detailValue}>
                 {generatedGame.schema?.initial_scene?.mechanic || 'N/A'}
               </Text>
             </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Camera:</Text>
-              <Text style={styles.detailValue}>
-                {generatedGame.schema?.initial_scene?.camera || 'N/A'}
-              </Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Duration:</Text>
-              <Text style={styles.detailValue}>
-                {generatedGame.schema?.initial_scene?.video_length_seconds || 10}s
-              </Text>
-            </View>
           </View>
 
-          {/* Next Steps */}
+          {/* Next Scene Ideas */}
           <View style={styles.nextSteps}>
-            <Text style={styles.nextStepsTitle}>Next Scene Ideas</Text>
-            {generatedGame.next_scene_prompts?.map((prompt: string, index: number) => (
-              <View key={index} style={styles.nextPrompt}>
-                <Ionicons name="chevron-forward" size={16} color="#4ECDC4" />
-                <Text style={styles.nextPromptText}>{prompt}</Text>
-              </View>
+            <Text style={styles.nextStepsTitle}>Continue Your Story</Text>
+            {generatedGame.next_scene_prompts?.map((scenePrompt: string, index: number) => (
+              <TouchableOpacity key={index} style={styles.nextPrompt}>
+                <Ionicons name="add-circle" size={16} color="#4ECDC4" />
+                <Text style={styles.nextPromptText}>{scenePrompt}</Text>
+              </TouchableOpacity>
             ))}
           </View>
 
