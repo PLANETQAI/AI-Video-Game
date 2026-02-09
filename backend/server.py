@@ -479,6 +479,68 @@ async def get_control_schemes():
         ]
     }
 
+@api_router.post("/generate-preview-image")
+async def generate_preview_image(request: GeneratePreviewImageRequest):
+    """Generate AI preview image for game scene"""
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"preview-img-{uuid.uuid4()}",
+            system_message="You are an expert game artist. Create high-quality game scene images."
+        ).with_model("gemini", "gemini-3-pro-image-preview").with_params(modalities=["image", "text"])
+        
+        # Build the prompt based on genre
+        genre_styles = {
+            "shooter": "futuristic sci-fi space environment with neon lights, starships, and cosmic backgrounds",
+            "action": "intense battle scene with explosions, dramatic lighting, and powerful warriors",
+            "puzzle": "colorful mystical environment with floating platforms and magical elements",
+            "adventure": "lush jungle or ancient ruins with atmospheric god rays and detailed foliage",
+            "arcade": "vibrant retro-modern environment with bright colors and dynamic elements",
+            "racing": "high-speed track with motion blur, sleek vehicles, and dramatic perspective",
+            "rpg": "epic fantasy landscape with castles, dragons, and magical auras"
+        }
+        
+        genre_style = genre_styles.get(request.genre, "detailed game environment")
+        
+        prompt = f"""Create a high-fidelity 3D realistic video game screenshot in {request.style} style.
+
+Genre: {request.genre.upper()} GAME
+Scene: {request.scene_description}
+Character: {request.character_description}
+Style: {genre_style}
+
+Requirements:
+- Photo-realistic 3D graphics like AAA video games
+- Volumetric lighting with god rays
+- Rich detailed textures
+- Atmospheric depth and fog
+- Third-person view showing the character from behind
+- Epic cinematic composition
+- 16:9 aspect ratio game screenshot
+- No text or UI elements in the image"""
+
+        msg = UserMessage(text=prompt)
+        text, images = await chat.send_message_multimodal_response(msg)
+        
+        if images and len(images) > 0:
+            # Return the base64 image data
+            return {
+                "success": True,
+                "image": f"data:{images[0]['mime_type']};base64,{images[0]['data'][:50]}...",  # Truncated for logging
+                "image_data": images[0]['data'],
+                "mime_type": images[0]['mime_type'],
+                "text_response": text
+            }
+        else:
+            return {
+                "success": False,
+                "error": "No image generated",
+                "text_response": text
+            }
+    except Exception as e:
+        logging.error(f"Image generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Include the router in the main app
 app.include_router(api_router)
 
