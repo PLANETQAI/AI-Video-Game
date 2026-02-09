@@ -22,82 +22,241 @@ import { StatusBar } from 'expo-status-bar';
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-// Enhanced Animated Game Preview Component - Interactive with AI Graphics
-const GamePreviewAnimation = ({ genre, controlScheme, gameData }: any) => {
-  // Position state
-  const [charX, setCharX] = useState(140);
-  const [charY, setCharY] = useState(120);
-  const [isJumping, setIsJumping] = useState(false);
-  const [bullets, setBullets] = useState<{id: number, x: number, y: number, trail: number[]}[]>([]);
-  const [isBoosting, setIsBoosting] = useState(false);
-  const [activeBtn, setActiveBtn] = useState<string | null>(null);
-  const [activeDpad, setActiveDpad] = useState<string | null>(null);
-  const [score, setScore] = useState(0);
-  const [enemyPos, setEnemyPos] = useState({ x: 220, y: 40 });
-  const [enemyDirection, setEnemyDirection] = useState(1);
-  const [particles, setParticles] = useState<{id: number, x: number, y: number, vx: number, vy: number, life: number, color: string}[]>([]);
-  const [bgImage, setBgImage] = useState<string | null>(null);
-  const [isLoadingBg, setIsLoadingBg] = useState(false);
-  const [explosions, setExplosions] = useState<{id: number, x: number, y: number, scale: number}[]>([]);
+// Video-Style Game Preview Component - AI Generated Scenes
+const GameVideoPreview = ({ genre, gameData, prompt, characterDescription }: any) => {
+  const [sceneImages, setSceneImages] = useState<string[]>([]);
+  const [currentScene, setCurrentScene] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState('');
+  const [error, setError] = useState<string | null>(null);
   
-  // Animation refs
-  const starOffset = useRef(new Animated.Value(0)).current;
-  const cloudOffset = useRef(new Animated.Value(0)).current;
-  const groundOffset = useRef(new Animated.Value(0)).current;
-  const jumpAnim = useRef(new Animated.Value(0)).current;
-  const boostGlow = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const characterGlow = useRef(new Animated.Value(0)).current;
-  const shakeAnim = useRef(new Animated.Value(0)).current;
-  const bulletIdRef = useRef(0);
-  const particleIdRef = useRef(0);
-  
-  // Game constants
-  const MOVE_SPEED = 12;
-  const BOOST_SPEED = 22;
-  const GAME_WIDTH = width - 40;
-  const GAME_HEIGHT = 220;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  // Generate AI background image
-  const generateBackgroundImage = async () => {
-    if (bgImage || isLoadingBg || !gameData?.schema?.initial_scene?.setting) return;
+  // Generate video scenes based on user's prompt
+  const generateVideoScenes = async () => {
+    if (!gameData?.schema || isGenerating) return;
     
-    setIsLoadingBg(true);
-    try {
-      const response = await fetch(`${API_URL}/api/generate-preview-image`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          genre: genre || 'action',
-          scene_description: gameData?.schema?.initial_scene?.setting || 'Epic game environment',
-          character_description: gameData?.schema?.main_character?.description || 'Heroic warrior',
-          style: 'high-fidelity 3D realistic'
-        }),
-      });
-      
-      const data = await response.json();
-      if (data.success && data.image_data) {
-        setBgImage(`data:${data.mime_type};base64,${data.image_data}`);
+    setIsGenerating(true);
+    setError(null);
+    const newScenes: string[] = [];
+    
+    // Generate multiple scenes that tell a story
+    const scenePrompts = [
+      {
+        description: `Opening shot: ${gameData.schema.initial_scene?.setting || prompt}`,
+        action: 'establishing wide shot, character visible in environment'
+      },
+      {
+        description: `Action shot: ${gameData.schema.initial_scene?.player_action || 'Character in motion'}`,
+        action: 'dynamic action pose, motion blur, dramatic angle'
+      },
+      {
+        description: `Close-up: ${gameData.schema.main_character?.name || 'The hero'} preparing for ${gameData.schema.initial_scene?.mechanic || 'combat'}`,
+        action: 'detailed character shot, intense expression, ready for action'
+      },
+      {
+        description: `Gameplay moment: ${gameData.schema.initial_scene?.success_outcome || 'Epic gameplay scene'}`,
+        action: 'peak action moment, visual effects, cinematic composition'
       }
-    } catch (error) {
-      console.log('Background generation skipped:', error);
-    } finally {
-      setIsLoadingBg(false);
+    ];
+
+    for (let i = 0; i < scenePrompts.length; i++) {
+      setGenerationStatus(`Generating scene ${i + 1} of ${scenePrompts.length}...`);
+      
+      try {
+        const response = await fetch(`${API_URL}/api/generate-video-scene`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            genre: genre,
+            scene_description: scenePrompts[i].description,
+            character_description: characterDescription || gameData.schema.main_character?.description,
+            action: scenePrompts[i].action,
+            scene_number: i + 1,
+            total_scenes: scenePrompts.length,
+            user_prompt: prompt
+          }),
+        });
+        
+        const data = await response.json();
+        if (data.success && data.image_data) {
+          newScenes.push(`data:${data.mime_type};base64,${data.image_data}`);
+        }
+      } catch (err) {
+        console.log(`Scene ${i + 1} generation error:`, err);
+      }
+      
+      // Small delay between generations
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
+    
+    if (newScenes.length > 0) {
+      setSceneImages(newScenes);
+      startSceneRotation(newScenes.length);
+    } else {
+      setError('Could not generate video scenes. Using placeholder.');
+    }
+    
+    setIsGenerating(false);
+    setGenerationStatus('');
+  };
+
+  // Auto-rotate through scenes like a video
+  const startSceneRotation = (totalScenes: number) => {
+    let sceneIndex = 0;
+    
+    const rotateScene = () => {
+      // Fade out
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        sceneIndex = (sceneIndex + 1) % totalScenes;
+        setCurrentScene(sceneIndex);
+        
+        // Slide and fade in
+        slideAnim.setValue(20);
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+    };
+    
+    const interval = setInterval(rotateScene, 4000);
+    return () => clearInterval(interval);
   };
 
   useEffect(() => {
-    // Try to generate AI background
-    generateBackgroundImage();
-    
-    // Multiple layered background animations
-    Animated.loop(
-      Animated.timing(starOffset, {
-        toValue: 200,
-        duration: 8000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
+    if (gameData?.schema) {
+      generateVideoScenes();
+    }
+  }, [gameData]);
+
+  const getGenreColors = () => {
+    switch (genre) {
+      case 'shooter': return { primary: '#FF4444', secondary: '#FF8888', bg: '#1a0a0a' };
+      case 'racing': return { primary: '#FFEAA7', secondary: '#FFD93D', bg: '#1a1a0a' };
+      case 'sports': return { primary: '#44FF44', secondary: '#88FF88', bg: '#0a1a0a' };
+      case 'adventure': return { primary: '#45B7D1', secondary: '#7DD3E8', bg: '#0a1a1a' };
+      case 'fighting': return { primary: '#FF6B6B', secondary: '#FF9B9B', bg: '#1a0a0a' };
+      case 'rpg': return { primary: '#DDA0DD', secondary: '#E8C8E8', bg: '#1a0a1a' };
+      case 'platformer': return { primary: '#96CEB4', secondary: '#B8E0CE', bg: '#0a1a0f' };
+      case 'horror': return { primary: '#8B0000', secondary: '#B22222', bg: '#0a0505' };
+      case 'simulation': return { primary: '#87CEEB', secondary: '#ADD8E6', bg: '#0a0f1a' };
+      case 'puzzle': return { primary: '#4ECDC4', secondary: '#7EDDD6', bg: '#0a1a1a' };
+      default: return { primary: '#4ECDC4', secondary: '#7EDDD6', bg: '#0a0a0f' };
+    }
+  };
+
+  const colors = getGenreColors();
+
+  return (
+    <View style={styles.videoPreviewContainer}>
+      {/* Main Video Display - No overlays, just the AI generated scene */}
+      <View style={styles.videoScreen}>
+        {isGenerating ? (
+          <LinearGradient colors={[colors.bg, '#000']} style={styles.videoPlaceholder}>
+            <View style={styles.generatingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.generatingTitle}>Generating Your Game Video</Text>
+              <Text style={styles.generatingStatus}>{generationStatus}</Text>
+              <View style={styles.generatingDetails}>
+                <Text style={styles.generatingDetail}>Genre: {genre?.toUpperCase()}</Text>
+                <Text style={styles.generatingDetail}>Creating cinematic scenes...</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        ) : sceneImages.length > 0 ? (
+          <Animated.View 
+            style={[
+              styles.sceneContainer,
+              { 
+                opacity: fadeAnim,
+                transform: [{ translateX: slideAnim }]
+              }
+            ]}
+          >
+            <Image 
+              source={{ uri: sceneImages[currentScene] }} 
+              style={styles.sceneImage}
+              resizeMode="cover"
+            />
+            {/* Cinematic bars for video feel */}
+            <View style={styles.cinematicBarTop} />
+            <View style={styles.cinematicBarBottom} />
+            
+            {/* Scene indicator */}
+            <View style={styles.sceneIndicator}>
+              {sceneImages.map((_, index) => (
+                <View 
+                  key={index}
+                  style={[
+                    styles.sceneIndicatorDot,
+                    currentScene === index && { backgroundColor: colors.primary }
+                  ]}
+                />
+              ))}
+            </View>
+          </Animated.View>
+        ) : (
+          <LinearGradient colors={[colors.bg, '#000']} style={styles.videoPlaceholder}>
+            <View style={styles.placeholderContent}>
+              <Ionicons name="videocam" size={50} color={colors.primary} />
+              <Text style={styles.placeholderTitle}>Video Preview</Text>
+              <Text style={styles.placeholderText}>
+                {error || 'AI-generated game footage will appear here'}
+              </Text>
+              {gameData?.schema?.initial_scene?.setting && (
+                <View style={styles.scenePreviewText}>
+                  <Text style={styles.sceneLabel}>Scene:</Text>
+                  <Text style={styles.sceneDescription}>
+                    {gameData.schema.initial_scene.setting}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
+        )}
+      </View>
+
+      {/* Video Info Bar - Minimal, no game controls */}
+      <View style={styles.videoInfoBar}>
+        <View style={styles.videoInfoLeft}>
+          <View style={[styles.genreBadge, { backgroundColor: colors.primary + '30' }]}>
+            <Text style={[styles.genreBadgeText, { color: colors.primary }]}>
+              {genre?.toUpperCase()} GAME
+            </Text>
+          </View>
+        </View>
+        <View style={styles.videoInfoCenter}>
+          <Text style={styles.videoTitle}>
+            {gameData?.game?.name || 'Generated Game'}
+          </Text>
+        </View>
+        <View style={styles.videoInfoRight}>
+          <TouchableOpacity 
+            style={styles.regenerateBtn}
+            onPress={generateVideoScenes}
+            disabled={isGenerating}
+          >
+            <Ionicons name="refresh" size={18} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+};
     ).start();
 
     Animated.loop(
