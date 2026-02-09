@@ -77,6 +77,12 @@ class AddSceneRequest(BaseModel):
 class GenerateCodeRequest(BaseModel):
     game_id: str
 
+class GeneratePreviewImageRequest(BaseModel):
+    genre: str
+    scene_description: str
+    character_description: str
+    style: str = "high-fidelity 3D realistic"
+
 # ============ HELPER FUNCTIONS ============
 
 async def generate_game_schema(prompt: str, genre: str, character: str, control_scheme: str) -> dict:
