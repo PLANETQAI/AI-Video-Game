@@ -740,7 +740,7 @@ export default function GameGenerator() {
 
         <ScrollView style={styles.previewContent}>
           {/* AI Video Preview - No overlays, character in scene */}
-          <GameVideoPreview 
+          <PlayableGamePreview 
             genre={selectedGenre} 
             gameData={generatedGame}
             prompt={prompt}
