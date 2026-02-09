@@ -1010,7 +1010,7 @@ export default function GameGenerator() {
 
   const renderGenreSelector = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Select Genre</Text>
+      <Text style={styles.sectionTitle}>Select 3D Game Genre</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.genreScroll}>
         {GENRES.map((genre) => (
           <TouchableOpacity
@@ -1025,6 +1025,7 @@ export default function GameGenerator() {
               <Ionicons name={genre.icon as any} size={28} color={genre.color} />
             </View>
             <Text style={styles.genreName}>{genre.name}</Text>
+            <Text style={styles.genreDescription}>{genre.description}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
