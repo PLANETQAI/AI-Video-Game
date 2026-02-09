@@ -627,6 +627,77 @@ This should look indistinguishable from a real next-gen video game screenshot.""
         logging.error(f"Image generation error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class GenerateVideoSceneRequest(BaseModel):
+    genre: str
+    scene_description: str
+    character_description: str
+    action: str
+    scene_number: int = 1
+    total_scenes: int = 4
+    user_prompt: str = ""
+
+@api_router.post("/generate-video-scene")
+async def generate_video_scene(request: GenerateVideoSceneRequest):
+    """Generate a single video scene frame with character in the scene"""
+    try:
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"video-scene-{uuid.uuid4()}",
+            system_message="You are a AAA game cinematographer. Create cinematic video game scenes with characters integrated naturally into the environment."
+        ).with_model("gemini", "gemini-3-pro-image-preview").with_params(modalities=["image", "text"])
+        
+        # Build cinematic prompt based on user's actual input
+        prompt = f"""Create an ULTRA HIGH-FIDELITY 3D VIDEO GAME CINEMATIC SCENE.
+
+USER'S GAME CONCEPT: {request.user_prompt}
+
+THIS IS SCENE {request.scene_number} OF {request.total_scenes}:
+{request.scene_description}
+
+ACTION/POSE: {request.action}
+
+CHARACTER IN SCENE: {request.character_description}
+
+CRITICAL REQUIREMENTS:
+1. The character MUST be visible and integrated INTO the scene (not overlaid)
+2. The character should be performing the described action naturally
+3. This must look like a real AAA video game cutscene/gameplay footage
+4. NO UI elements, NO health bars, NO text overlays
+5. Pure cinematic video game footage only
+
+VISUAL QUALITY:
+- Unreal Engine 5 / Unity HDRP cinematic quality
+- Movie-quality lighting and composition
+- The character is a REAL 3D rendered character in the scene
+- Ray-traced reflections and shadows
+- Volumetric atmospheric effects
+- Cinematic depth of field
+- Film grain for cinematic feel
+- 16:9 widescreen aspect ratio
+
+Make this indistinguishable from a real next-gen video game cinematic trailer."""
+
+        msg = UserMessage(text=prompt)
+        text, images = await chat.send_message_multimodal_response(msg)
+        
+        if images and len(images) > 0:
+            return {
+                "success": True,
+                "image_data": images[0]['data'],
+                "mime_type": images[0]['mime_type'],
+                "scene_number": request.scene_number,
+                "text_response": text
+            }
+        else:
+            return {
+                "success": False,
+                "error": "No scene generated",
+                "scene_number": request.scene_number
+            }
+    except Exception as e:
+        logging.error(f"Video scene generation error: {str(e)}")
+        return {"success": False, "error": str(e), "scene_number": request.scene_number}
+
 # Include the router in the main app
 app.include_router(api_router)
 
