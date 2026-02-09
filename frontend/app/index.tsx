@@ -21,21 +21,32 @@ import { StatusBar } from 'expo-status-bar';
 const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-// Animated Game Preview Component
+// Animated Game Preview Component - Interactive
 const GamePreviewAnimation = ({ genre, controlScheme, gameData }: any) => {
-  const characterX = useRef(new Animated.Value(50)).current;
-  const characterY = useRef(new Animated.Value(100)).current;
-  const bulletY = useRef(new Animated.Value(-20)).current;
-  const enemyX = useRef(new Animated.Value(200)).current;
-  const enemyY = useRef(new Animated.Value(20)).current;
+  // Position state - using state for interactive control
+  const [charX, setCharX] = useState(140);
+  const [charY, setCharY] = useState(140);
+  const [isJumping, setIsJumping] = useState(false);
+  const [bullets, setBullets] = useState<{id: number, x: number, y: number}[]>([]);
+  const [isBoosting, setIsBoosting] = useState(false);
+  const [activeBtn, setActiveBtn] = useState<string | null>(null);
+  const [activeDpad, setActiveDpad] = useState<string | null>(null);
+  const [score, setScore] = useState(0);
+  const [enemyPos, setEnemyPos] = useState({ x: 200, y: 30 });
+  const [enemyDirection, setEnemyDirection] = useState(1);
+  
   const starOffset = useRef(new Animated.Value(0)).current;
   const groundOffset = useRef(new Animated.Value(0)).current;
   const jumpAnim = useRef(new Animated.Value(0)).current;
-  const activeButton = useRef(new Animated.Value(0)).current;
-  const dpadDirection = useRef(new Animated.Value(0)).current;
-  const particleOpacity = useRef(new Animated.Value(0)).current;
-  const carRotation = useRef(new Animated.Value(0)).current;
+  const boostGlow = useRef(new Animated.Value(0)).current;
+  const bulletIdRef = useRef(0);
   
+  // Movement speed
+  const MOVE_SPEED = 15;
+  const BOOST_SPEED = 25;
+  const GAME_WIDTH = 280;
+  const GAME_HEIGHT = 180;
+
   useEffect(() => {
     // Background scrolling animation
     Animated.loop(
@@ -47,7 +58,7 @@ const GamePreviewAnimation = ({ genre, controlScheme, gameData }: any) => {
       })
     ).start();
 
-    // Ground scrolling for platformers
+    // Ground scrolling
     Animated.loop(
       Animated.timing(groundOffset, {
         toValue: -100,
@@ -57,97 +68,508 @@ const GamePreviewAnimation = ({ genre, controlScheme, gameData }: any) => {
       })
     ).start();
 
-    // Character movement animation
-    const moveSequence = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(characterX, {
-            toValue: 120,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(dpadDirection, {
-            toValue: 1, // right
-            duration: 100,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(characterX, {
-            toValue: 50,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(dpadDirection, {
-            toValue: -1, // left
-            duration: 100,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    );
-    moveSequence.start();
+    // Enemy movement
+    const enemyInterval = setInterval(() => {
+      setEnemyPos(prev => {
+        let newX = prev.x + (enemyDirection * 2);
+        let newDir = enemyDirection;
+        if (newX > GAME_WIDTH - 40) {
+          newDir = -1;
+          newX = GAME_WIDTH - 40;
+        } else if (newX < 20) {
+          newDir = 1;
+          newX = 20;
+        }
+        setEnemyDirection(newDir);
+        return { ...prev, x: newX };
+      });
+    }, 50);
 
-    // Jump animation (periodic)
-    const jumpSequence = Animated.loop(
-      Animated.sequence([
-        Animated.delay(2000),
-        Animated.parallel([
+    // Bullet movement
+    const bulletInterval = setInterval(() => {
+      setBullets(prev => {
+        const updated = prev
+          .map(b => ({ ...b, y: b.y - 8 }))
+          .filter(b => b.y > -20);
+        
+        // Check collision with enemy
+        updated.forEach(bullet => {
+          if (
+            bullet.x > enemyPos.x - 15 &&
+            bullet.x < enemyPos.x + 35 &&
+            bullet.y < enemyPos.y + 30 &&
+            bullet.y > enemyPos.y
+          ) {
+            setScore(s => s + 100);
+            setEnemyPos({ x: Math.random() * (GAME_WIDTH - 60) + 30, y: 30 });
+          }
+        });
+        
+        return updated;
+      });
+    }, 30);
+
+    return () => {
+      clearInterval(enemyInterval);
+      clearInterval(bulletInterval);
+    };
+  }, [enemyDirection]);
+
+  // D-Pad controls
+  const handleDpadPress = (direction: string) => {
+    setActiveDpad(direction);
+    const speed = isBoosting ? BOOST_SPEED : MOVE_SPEED;
+    
+    switch (direction) {
+      case 'up':
+        setCharY(y => Math.max(20, y - speed));
+        break;
+      case 'down':
+        setCharY(y => Math.min(GAME_HEIGHT - 40, y + speed));
+        break;
+      case 'left':
+        setCharX(x => Math.max(10, x - speed));
+        break;
+      case 'right':
+        setCharX(x => Math.min(GAME_WIDTH - 30, x + speed));
+        break;
+    }
+  };
+
+  const handleDpadRelease = () => {
+    setActiveDpad(null);
+  };
+
+  // Action buttons
+  const handleButtonPress = (button: string) => {
+    setActiveBtn(button);
+    
+    switch (button) {
+      case 'A': // Shoot
+        const newBullet = {
+          id: bulletIdRef.current++,
+          x: charX + 10,
+          y: charY - 5,
+        };
+        setBullets(prev => [...prev, newBullet]);
+        break;
+        
+      case 'B': // Jump
+        if (!isJumping) {
+          setIsJumping(true);
           Animated.sequence([
             Animated.timing(jumpAnim, {
-              toValue: -40,
-              duration: 300,
+              toValue: -50,
+              duration: 250,
               easing: Easing.out(Easing.quad),
               useNativeDriver: true,
             }),
             Animated.timing(jumpAnim, {
               toValue: 0,
-              duration: 300,
+              duration: 250,
               easing: Easing.in(Easing.quad),
               useNativeDriver: true,
             }),
-          ]),
-          Animated.sequence([
-            Animated.timing(activeButton, {
-              toValue: 2, // B button
-              duration: 50,
-              useNativeDriver: true,
-            }),
-            Animated.delay(500),
-            Animated.timing(activeButton, {
-              toValue: 0,
-              duration: 50,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-      ])
-    );
-    jumpSequence.start();
-
-    // Shooting animation (for shooter/action genres)
-    if (genre === 'shooter' || genre === 'action') {
-      const shootSequence = Animated.loop(
+          ]).start(() => setIsJumping(false));
+        }
+        break;
+        
+      case 'C': // Special/Kick - Triple shot
+        [-15, 0, 15].forEach((offset, i) => {
+          setTimeout(() => {
+            setBullets(prev => [...prev, {
+              id: bulletIdRef.current++,
+              x: charX + 10 + offset,
+              y: charY - 5,
+            }]);
+          }, i * 50);
+        });
+        break;
+        
+      case 'D': // Boost
+        setIsBoosting(true);
         Animated.sequence([
-          Animated.parallel([
-            Animated.timing(bulletY, {
-              toValue: -150,
-              duration: 500,
-              useNativeDriver: true,
-            }),
-            Animated.timing(activeButton, {
-              toValue: 1, // A button
-              duration: 50,
-              useNativeDriver: true,
-            }),
-            Animated.timing(particleOpacity, {
-              toValue: 1,
-              duration: 100,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.parallel([
-            Animated.timing(bulletY, {
+          Animated.timing(boostGlow, {
+            toValue: 1,
+            duration: 100,
+            useNativeDriver: true,
+          }),
+          Animated.timing(boostGlow, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ]).start(() => setIsBoosting(false));
+        break;
+    }
+  };
+
+  const handleButtonRelease = () => {
+    setActiveBtn(null);
+  };
+
+  // Swipe gesture handling
+  const [touchStart, setTouchStart] = useState<{x: number, y: number} | null>(null);
+  
+  const handleTouchStart = (e: any) => {
+    const touch = e.nativeEvent;
+    setTouchStart({ x: touch.locationX, y: touch.locationY });
+  };
+
+  const handleTouchMove = (e: any) => {
+    if (!touchStart) return;
+    const touch = e.nativeEvent;
+    const dx = touch.locationX - touchStart.x;
+    const dy = touch.locationY - touchStart.y;
+    
+    const speed = isBoosting ? BOOST_SPEED : MOVE_SPEED;
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 5) {
+        setCharX(x => Math.min(GAME_WIDTH - 30, x + speed * 0.3));
+        setActiveDpad('right');
+      } else if (dx < -5) {
+        setCharX(x => Math.max(10, x - speed * 0.3));
+        setActiveDpad('left');
+      }
+    } else {
+      if (dy > 5) {
+        setCharY(y => Math.min(GAME_HEIGHT - 40, y + speed * 0.3));
+        setActiveDpad('down');
+      } else if (dy < -5) {
+        setCharY(y => Math.max(20, y - speed * 0.3));
+        setActiveDpad('up');
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStart(null);
+    setActiveDpad(null);
+  };
+
+  const handleTap = () => {
+    handleButtonPress('A');
+    setTimeout(() => handleButtonRelease(), 100);
+  };
+
+  const getGenreColors = () => {
+    switch (genre) {
+      case 'shooter': return { bg1: '#0f0f23', bg2: '#1a1a3e', accent: '#FF6B6B' };
+      case 'action': return { bg1: '#1a0f0f', bg2: '#2e1a1a', accent: '#FF9500' };
+      case 'puzzle': return { bg1: '#0f1a1a', bg2: '#1a2e2e', accent: '#4ECDC4' };
+      case 'adventure': return { bg1: '#0f1a0f', bg2: '#1a2e1a', accent: '#45B7D1' };
+      case 'arcade': return { bg1: '#1a1a0f', bg2: '#2e2e1a', accent: '#96CEB4' };
+      case 'racing': return { bg1: '#1a0f1a', bg2: '#2e1a2e', accent: '#FFEAA7' };
+      case 'rpg': return { bg1: '#1a0f1a', bg2: '#2e1a2e', accent: '#DDA0DD' };
+      default: return { bg1: '#0a0a0f', bg2: '#1a1a2e', accent: '#4ECDC4' };
+    }
+  };
+
+  const colors = getGenreColors();
+
+  // Render stars for space games
+  const renderStars = () => {
+    const stars = [];
+    for (let i = 0; i < 20; i++) {
+      stars.push(
+        <Animated.View
+          key={i}
+          style={[
+            styles.star,
+            {
+              left: `${(i * 17) % 100}%`,
+              top: `${(i * 23) % 80}%`,
+              transform: [{ translateY: starOffset }],
+              opacity: 0.3 + (i % 3) * 0.3,
+            },
+          ]}
+        />
+      );
+    }
+    return stars;
+  };
+
+  // Render ground tiles
+  const renderGround = () => (
+    <Animated.View 
+      style={[
+        styles.groundContainer,
+        { transform: [{ translateX: groundOffset }] }
+      ]}
+    >
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <View key={i} style={[styles.groundTile, { backgroundColor: colors.accent + '40' }]} />
+      ))}
+    </Animated.View>
+  );
+
+  // Render the character
+  const renderCharacter = () => (
+    <Animated.View
+      style={[
+        styles.character,
+        {
+          left: charX,
+          top: charY,
+          transform: [{ translateY: jumpAnim }],
+        },
+      ]}
+    >
+      {isBoosting && (
+        <Animated.View 
+          style={[
+            styles.boostAura,
+            { 
+              backgroundColor: colors.accent,
+              opacity: boostGlow.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 0.5],
+              }),
+            }
+          ]} 
+        />
+      )}
+      <View style={[styles.characterHead, { backgroundColor: colors.accent }]} />
+      <View style={[styles.characterBody, { backgroundColor: colors.accent }]} />
+      <View style={styles.characterLegs}>
+        <View style={[styles.characterLeg, { backgroundColor: colors.accent + 'CC' }]} />
+        <View style={[styles.characterLeg, { backgroundColor: colors.accent + 'CC' }]} />
+      </View>
+      {(genre === 'shooter' || genre === 'action') && (
+        <View style={[styles.weapon, { backgroundColor: '#888' }]} />
+      )}
+    </Animated.View>
+  );
+
+  // Render bullets
+  const renderBullets = () => (
+    <>
+      {bullets.map(bullet => (
+        <View
+          key={bullet.id}
+          style={[
+            styles.bullet,
+            {
+              left: bullet.x,
+              top: bullet.y,
+            },
+          ]}
+        />
+      ))}
+    </>
+  );
+
+  // Render enemy
+  const renderEnemy = () => (
+    <View
+      style={[
+        styles.enemy,
+        {
+          left: enemyPos.x,
+          top: enemyPos.y,
+        },
+      ]}
+    >
+      <View style={[styles.enemyBody, { backgroundColor: '#FF4444' }]} />
+      <View style={styles.enemyEyes}>
+        <View style={styles.enemyEye} />
+        <View style={styles.enemyEye} />
+      </View>
+    </View>
+  );
+
+  // Render D-Pad control overlay
+  const renderDpadControls = () => (
+    <View style={styles.dpadOverlay}>
+      <TouchableOpacity
+        style={[styles.dpadBtnUp, activeDpad === 'up' && styles.dpadBtnActive]}
+        onPressIn={() => handleDpadPress('up')}
+        onPressOut={handleDpadRelease}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.dpadArrow}>▲</Text>
+      </TouchableOpacity>
+      <View style={styles.dpadRow}>
+        <TouchableOpacity
+          style={[styles.dpadBtnLeft, activeDpad === 'left' && styles.dpadBtnActive]}
+          onPressIn={() => handleDpadPress('left')}
+          onPressOut={handleDpadRelease}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.dpadArrow}>◀</Text>
+        </TouchableOpacity>
+        <View style={styles.dpadCenter} />
+        <TouchableOpacity
+          style={[styles.dpadBtnRight, activeDpad === 'right' && styles.dpadBtnActive]}
+          onPressIn={() => handleDpadPress('right')}
+          onPressOut={handleDpadRelease}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.dpadArrow}>▶</Text>
+        </TouchableOpacity>
+      </View>
+      <TouchableOpacity
+        style={[styles.dpadBtnDown, activeDpad === 'down' && styles.dpadBtnActive]}
+        onPressIn={() => handleDpadPress('down')}
+        onPressOut={handleDpadRelease}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.dpadArrow}>▼</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Render action buttons
+  const renderActionButtons = () => (
+    <View style={styles.actionButtonsOverlay}>
+      <View style={styles.btnRowOverlay}>
+        <TouchableOpacity
+          style={[
+            styles.actionBtnOverlay,
+            { backgroundColor: '#FF6B6B' },
+            activeBtn === 'A' && styles.btnActive,
+          ]}
+          onPressIn={() => handleButtonPress('A')}
+          onPressOut={handleButtonRelease}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.btnLabelOverlay}>A</Text>
+          <Text style={styles.btnActionLabel}>SHOOT</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.actionBtnOverlay,
+            { backgroundColor: '#4ECDC4' },
+            activeBtn === 'B' && styles.btnActive,
+          ]}
+          onPressIn={() => handleButtonPress('B')}
+          onPressOut={handleButtonRelease}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.btnLabelOverlay}>B</Text>
+          <Text style={styles.btnActionLabel}>JUMP</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.btnRowOverlay}>
+        <TouchableOpacity
+          style={[
+            styles.actionBtnOverlay,
+            { backgroundColor: '#FFE66D' },
+            activeBtn === 'C' && styles.btnActive,
+          ]}
+          onPressIn={() => handleButtonPress('C')}
+          onPressOut={handleButtonRelease}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.btnLabelOverlay, { color: '#333' }]}>C</Text>
+          <Text style={[styles.btnActionLabel, { color: '#333' }]}>SPECIAL</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.actionBtnOverlay,
+            { backgroundColor: '#95E1D3' },
+            activeBtn === 'D' && styles.btnActive,
+          ]}
+          onPressIn={() => handleButtonPress('D')}
+          onPressOut={handleButtonRelease}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.btnLabelOverlay, { color: '#333' }]}>D</Text>
+          <Text style={[styles.btnActionLabel, { color: '#333' }]}>BOOST</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  // Render swipe area
+  const renderSwipeControls = () => (
+    <View 
+      style={styles.swipeControlArea}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <TouchableOpacity 
+        style={styles.swipeTapArea}
+        onPress={handleTap}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="hand-left" size={30} color="#4ECDC4" />
+        <Text style={styles.swipeText}>Swipe to move</Text>
+        <Text style={styles.swipeText}>Tap to shoot</Text>
+      </TouchableOpacity>
+      <View style={styles.swipeButtonsRow}>
+        <TouchableOpacity
+          style={[styles.swipeActionBtn, { backgroundColor: '#4ECDC4' }]}
+          onPress={() => handleButtonPress('B')}
+        >
+          <Text style={styles.swipeBtnText}>JUMP</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.swipeActionBtn, { backgroundColor: '#FFE66D' }]}
+          onPress={() => handleButtonPress('C')}
+        >
+          <Text style={[styles.swipeBtnText, { color: '#333' }]}>SPECIAL</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.swipeActionBtn, { backgroundColor: '#95E1D3' }]}
+          onPress={() => handleButtonPress('D')}
+        >
+          <Text style={[styles.swipeBtnText, { color: '#333' }]}>BOOST</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.gamePreviewContainer}>
+      <LinearGradient colors={[colors.bg1, colors.bg2]} style={styles.gameScreen}>
+        {/* Background elements */}
+        {(genre === 'shooter' || genre === 'adventure') && renderStars()}
+        {(genre === 'arcade' || genre === 'puzzle' || genre === 'rpg') && renderGround()}
+
+        {/* Game elements */}
+        {renderCharacter()}
+        {renderBullets()}
+        {renderEnemy()}
+
+        {/* HUD */}
+        <View style={styles.gameHUD}>
+          <View style={styles.hudItem}>
+            <Ionicons name="heart" size={12} color="#FF6B6B" />
+            <Text style={styles.hudText}>100</Text>
+          </View>
+          <View style={styles.hudItem}>
+            <Ionicons name="star" size={12} color="#FFE66D" />
+            <Text style={styles.hudText}>{score}</Text>
+          </View>
+        </View>
+
+        {/* Genre label */}
+        <View style={styles.genreLabel}>
+          <Text style={styles.genreLabelText}>{genre?.toUpperCase()} - PLAYABLE</Text>
+        </View>
+      </LinearGradient>
+
+      {/* Control overlay */}
+      {controlScheme === 'dpad_buttons' ? (
+        <View style={styles.controlOverlay}>
+          {renderDpadControls()}
+          {renderActionButtons()}
+        </View>
+      ) : (
+        renderSwipeControls()
+      )}
+
+      {/* Instructions */}
+      <View style={styles.playIndicator}>
+        <Ionicons name="game-controller" size={16} color="#4ECDC4" />
+        <Text style={styles.playText}>Use controls below to play!</Text>
+      </View>
+    </View>
+  );
+};
               toValue: -20,
               duration: 10,
               useNativeDriver: true,
