@@ -11,14 +11,504 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+// Animated Game Preview Component
+const GamePreviewAnimation = ({ genre, controlScheme, gameData }: any) => {
+  const characterX = useRef(new Animated.Value(50)).current;
+  const characterY = useRef(new Animated.Value(100)).current;
+  const bulletY = useRef(new Animated.Value(-20)).current;
+  const enemyX = useRef(new Animated.Value(200)).current;
+  const enemyY = useRef(new Animated.Value(20)).current;
+  const starOffset = useRef(new Animated.Value(0)).current;
+  const groundOffset = useRef(new Animated.Value(0)).current;
+  const jumpAnim = useRef(new Animated.Value(0)).current;
+  const activeButton = useRef(new Animated.Value(0)).current;
+  const dpadDirection = useRef(new Animated.Value(0)).current;
+  const particleOpacity = useRef(new Animated.Value(0)).current;
+  const carRotation = useRef(new Animated.Value(0)).current;
+  
+  useEffect(() => {
+    // Background scrolling animation
+    Animated.loop(
+      Animated.timing(starOffset, {
+        toValue: 100,
+        duration: 3000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    // Ground scrolling for platformers
+    Animated.loop(
+      Animated.timing(groundOffset, {
+        toValue: -100,
+        duration: 2000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    // Character movement animation
+    const moveSequence = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(characterX, {
+            toValue: 120,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dpadDirection, {
+            toValue: 1, // right
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(characterX, {
+            toValue: 50,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dpadDirection, {
+            toValue: -1, // left
+            duration: 100,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
+    moveSequence.start();
+
+    // Jump animation (periodic)
+    const jumpSequence = Animated.loop(
+      Animated.sequence([
+        Animated.delay(2000),
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(jumpAnim, {
+              toValue: -40,
+              duration: 300,
+              easing: Easing.out(Easing.quad),
+              useNativeDriver: true,
+            }),
+            Animated.timing(jumpAnim, {
+              toValue: 0,
+              duration: 300,
+              easing: Easing.in(Easing.quad),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(activeButton, {
+              toValue: 2, // B button
+              duration: 50,
+              useNativeDriver: true,
+            }),
+            Animated.delay(500),
+            Animated.timing(activeButton, {
+              toValue: 0,
+              duration: 50,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+      ])
+    );
+    jumpSequence.start();
+
+    // Shooting animation (for shooter/action genres)
+    if (genre === 'shooter' || genre === 'action') {
+      const shootSequence = Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(bulletY, {
+              toValue: -150,
+              duration: 500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(activeButton, {
+              toValue: 1, // A button
+              duration: 50,
+              useNativeDriver: true,
+            }),
+            Animated.timing(particleOpacity, {
+              toValue: 1,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(bulletY, {
+              toValue: -20,
+              duration: 10,
+              useNativeDriver: true,
+            }),
+            Animated.timing(activeButton, {
+              toValue: 0,
+              duration: 50,
+              useNativeDriver: true,
+            }),
+            Animated.timing(particleOpacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.delay(800),
+        ])
+      );
+      shootSequence.start();
+    }
+
+    // Enemy movement
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(enemyX, {
+          toValue: 80,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(enemyX, {
+          toValue: 200,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Racing car wobble
+    if (genre === 'racing') {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(carRotation, {
+            toValue: 0.1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(carRotation, {
+            toValue: -0.1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [genre]);
+
+  const getGenreColors = () => {
+    switch (genre) {
+      case 'shooter': return { bg1: '#0f0f23', bg2: '#1a1a3e', accent: '#FF6B6B' };
+      case 'action': return { bg1: '#1a0f0f', bg2: '#2e1a1a', accent: '#FF9500' };
+      case 'puzzle': return { bg1: '#0f1a1a', bg2: '#1a2e2e', accent: '#4ECDC4' };
+      case 'adventure': return { bg1: '#0f1a0f', bg2: '#1a2e1a', accent: '#45B7D1' };
+      case 'arcade': return { bg1: '#1a1a0f', bg2: '#2e2e1a', accent: '#96CEB4' };
+      case 'racing': return { bg1: '#1a0f1a', bg2: '#2e1a2e', accent: '#FFEAA7' };
+      case 'rpg': return { bg1: '#1a0f1a', bg2: '#2e1a2e', accent: '#DDA0DD' };
+      default: return { bg1: '#0a0a0f', bg2: '#1a1a2e', accent: '#4ECDC4' };
+    }
+  };
+
+  const colors = getGenreColors();
+
+  // Render stars for space games
+  const renderStars = () => {
+    const stars = [];
+    for (let i = 0; i < 20; i++) {
+      stars.push(
+        <Animated.View
+          key={i}
+          style={[
+            styles.star,
+            {
+              left: (i * 17) % 100 + '%',
+              top: (i * 23) % 80 + '%',
+              transform: [{ translateY: starOffset }],
+              opacity: 0.3 + (i % 3) * 0.3,
+            },
+          ]}
+        />
+      );
+    }
+    return stars;
+  };
+
+  // Render ground tiles for platformers
+  const renderGround = () => (
+    <Animated.View 
+      style={[
+        styles.groundContainer,
+        { transform: [{ translateX: groundOffset }] }
+      ]}
+    >
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <View key={i} style={[styles.groundTile, { backgroundColor: colors.accent + '40' }]} />
+      ))}
+    </Animated.View>
+  );
+
+  // Render the character based on genre
+  const renderCharacter = () => {
+    if (genre === 'racing') {
+      return (
+        <Animated.View
+          style={[
+            styles.racingCar,
+            {
+              transform: [
+                { translateX: characterX },
+                { rotate: carRotation.interpolate({
+                  inputRange: [-0.1, 0.1],
+                  outputRange: ['-5deg', '5deg'],
+                }) },
+              ],
+            },
+          ]}
+        >
+          <View style={[styles.carBody, { backgroundColor: colors.accent }]} />
+          <View style={styles.carWindow} />
+          <View style={[styles.carWheel, styles.carWheelLeft]} />
+          <View style={[styles.carWheel, styles.carWheelRight]} />
+        </Animated.View>
+      );
+    }
+
+    return (
+      <Animated.View
+        style={[
+          styles.character,
+          {
+            transform: [
+              { translateX: characterX },
+              { translateY: Animated.add(characterY, jumpAnim) },
+            ],
+          },
+        ]}
+      >
+        <View style={[styles.characterHead, { backgroundColor: colors.accent }]} />
+        <View style={[styles.characterBody, { backgroundColor: colors.accent }]} />
+        <View style={styles.characterLegs}>
+          <View style={[styles.characterLeg, { backgroundColor: colors.accent + 'CC' }]} />
+          <View style={[styles.characterLeg, { backgroundColor: colors.accent + 'CC' }]} />
+        </View>
+        {/* Weapon for shooter */}
+        {(genre === 'shooter' || genre === 'action') && (
+          <View style={[styles.weapon, { backgroundColor: '#888' }]} />
+        )}
+      </Animated.View>
+    );
+  };
+
+  // Render bullets for shooter
+  const renderBullets = () => {
+    if (genre !== 'shooter' && genre !== 'action') return null;
+    return (
+      <>
+        <Animated.View
+          style={[
+            styles.bullet,
+            {
+              transform: [
+                { translateX: Animated.add(characterX, new Animated.Value(15)) },
+                { translateY: Animated.add(characterY, bulletY) },
+              ],
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.muzzleFlash,
+            {
+              opacity: particleOpacity,
+              transform: [
+                { translateX: Animated.add(characterX, new Animated.Value(12)) },
+                { translateY: Animated.add(characterY, new Animated.Value(-5)) },
+              ],
+            },
+          ]}
+        />
+      </>
+    );
+  };
+
+  // Render enemy
+  const renderEnemy = () => (
+    <Animated.View
+      style={[
+        styles.enemy,
+        {
+          transform: [
+            { translateX: enemyX },
+            { translateY: enemyY },
+          ],
+        },
+      ]}
+    >
+      <View style={[styles.enemyBody, { backgroundColor: '#FF4444' }]} />
+      <View style={styles.enemyEyes}>
+        <View style={styles.enemyEye} />
+        <View style={styles.enemyEye} />
+      </View>
+    </Animated.View>
+  );
+
+  // Render control overlay
+  const renderControlOverlay = () => {
+    if (controlScheme === 'swipe') {
+      return (
+        <View style={styles.swipeOverlay}>
+          <Animated.View style={[styles.swipeIndicator, { opacity: 0.6 }]}>
+            <Ionicons name="swap-horizontal" size={24} color="#fff" />
+            <Text style={styles.swipeText}>Swipe to move</Text>
+          </Animated.View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.controlOverlay}>
+        {/* D-Pad */}
+        <View style={styles.dpadOverlay}>
+          <Animated.View style={[styles.dpadBtnUp, dpadDirection.interpolate({
+            inputRange: [-1, 0, 1],
+            outputRange: ['#333', '#333', '#333'],
+          }) && styles.dpadBtnActive]} />
+          <View style={styles.dpadRow}>
+            <Animated.View 
+              style={[
+                styles.dpadBtnLeft,
+                {
+                  backgroundColor: dpadDirection.interpolate({
+                    inputRange: [-1, 0, 1],
+                    outputRange: ['#4ECDC4', '#333', '#333'],
+                  }),
+                },
+              ]} 
+            />
+            <View style={styles.dpadCenter} />
+            <Animated.View 
+              style={[
+                styles.dpadBtnRight,
+                {
+                  backgroundColor: dpadDirection.interpolate({
+                    inputRange: [-1, 0, 1],
+                    outputRange: ['#333', '#333', '#4ECDC4'],
+                  }),
+                },
+              ]} 
+            />
+          </View>
+          <View style={styles.dpadBtnDown} />
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtonsOverlay}>
+          <View style={styles.btnRowOverlay}>
+            <Animated.View 
+              style={[
+                styles.actionBtnOverlay, 
+                { backgroundColor: '#FF6B6B' },
+                {
+                  transform: [{
+                    scale: activeButton.interpolate({
+                      inputRange: [0, 1, 2, 3, 4],
+                      outputRange: [1, 1.3, 1, 1, 1],
+                    }),
+                  }],
+                },
+              ]}
+            >
+              <Text style={styles.btnLabelOverlay}>A</Text>
+            </Animated.View>
+            <Animated.View 
+              style={[
+                styles.actionBtnOverlay, 
+                { backgroundColor: '#4ECDC4' },
+                {
+                  transform: [{
+                    scale: activeButton.interpolate({
+                      inputRange: [0, 1, 2, 3, 4],
+                      outputRange: [1, 1, 1.3, 1, 1],
+                    }),
+                  }],
+                },
+              ]}
+            >
+              <Text style={styles.btnLabelOverlay}>B</Text>
+            </Animated.View>
+          </View>
+          <View style={styles.btnRowOverlay}>
+            <View style={[styles.actionBtnOverlay, { backgroundColor: '#FFE66D' }]}>
+              <Text style={styles.btnLabelOverlay}>C</Text>
+            </View>
+            <View style={[styles.actionBtnOverlay, { backgroundColor: '#95E1D3' }]}>
+              <Text style={styles.btnLabelOverlay}>D</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.gamePreviewContainer}>
+      <LinearGradient colors={[colors.bg1, colors.bg2]} style={styles.gameScreen}>
+        {/* Background elements */}
+        {(genre === 'shooter' || genre === 'adventure') && renderStars()}
+        
+        {/* Ground for platformers */}
+        {(genre === 'arcade' || genre === 'puzzle' || genre === 'rpg') && renderGround()}
+        
+        {/* Racing track lines */}
+        {genre === 'racing' && (
+          <View style={styles.trackLines}>
+            <Animated.View style={[styles.trackLine, { transform: [{ translateY: starOffset }] }]} />
+            <Animated.View style={[styles.trackLine, styles.trackLine2, { transform: [{ translateY: starOffset }] }]} />
+          </View>
+        )}
+
+        {/* Game elements */}
+        {renderCharacter()}
+        {renderBullets()}
+        {renderEnemy()}
+
+        {/* HUD */}
+        <View style={styles.gameHUD}>
+          <View style={styles.hudItem}>
+            <Ionicons name="heart" size={12} color="#FF6B6B" />
+            <Text style={styles.hudText}>100</Text>
+          </View>
+          <View style={styles.hudItem}>
+            <Ionicons name="star" size={12} color="#FFE66D" />
+            <Text style={styles.hudText}>0</Text>
+          </View>
+        </View>
+
+        {/* Genre label */}
+        <View style={styles.genreLabel}>
+          <Text style={styles.genreLabelText}>{genre?.toUpperCase()} PREVIEW</Text>
+        </View>
+      </LinearGradient>
+
+      {/* Control overlay */}
+      {renderControlOverlay()}
+
+      {/* Play indicator */}
+      <View style={styles.playIndicator}>
+        <Ionicons name="play-circle" size={20} color="#4ECDC4" />
+        <Text style={styles.playText}>Live Preview</Text>
+      </View>
+    </View>
+  );
+};
 
 // Genre data
 const GENRES = [
