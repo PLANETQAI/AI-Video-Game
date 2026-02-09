@@ -1954,4 +1954,59 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
+  // Interactive control styles
+  dpadArrow: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  btnActive: {
+    transform: [{ scale: 1.2 }],
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  btnActionLabel: {
+    color: '#fff',
+    fontSize: 7,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  swipeControlArea: {
+    padding: 16,
+    backgroundColor: '#0a0a0f',
+    alignItems: 'center',
+  },
+  swipeTapArea: {
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#1a1a24',
+    borderRadius: 12,
+    marginBottom: 12,
+    width: '100%',
+  },
+  swipeButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  swipeActionBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  swipeBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  boostAura: {
+    position: 'absolute',
+    width: 40,
+    height: 50,
+    borderRadius: 20,
+    top: -5,
+    left: -5,
+  },
 });
