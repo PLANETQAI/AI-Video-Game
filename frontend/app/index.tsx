@@ -845,20 +845,19 @@ export default function GameGenerator() {
         </View>
 
         <ScrollView style={styles.previewContent}>
-          {/* Game Preview Animation */}
-          <View style={styles.videoPreview}>
-            <LinearGradient
-              colors={['#1a1a2e', '#16213e']}
-              style={styles.videoPlaceholder}
-            >
-              <Animated.View style={styles.gamePreviewAnimation}>
-                <Ionicons name="game-controller" size={60} color="#4ECDC4" />
-                <Text style={styles.previewLabel}>Scene Preview</Text>
-                <Text style={styles.sceneDescription}>
-                  {generatedGame.schema?.initial_scene?.setting || 'Loading scene...'}
-                </Text>
-              </Animated.View>
-            </LinearGradient>
+          {/* Animated Game Preview */}
+          <GamePreviewAnimation 
+            genre={selectedGenre} 
+            controlScheme={controlScheme}
+            gameData={generatedGame}
+          />
+
+          {/* Scene Description */}
+          <View style={styles.sceneDescriptionBox}>
+            <Text style={styles.sceneDescriptionTitle}>Scene Setting</Text>
+            <Text style={styles.sceneDescriptionText}>
+              {generatedGame.schema?.initial_scene?.setting || 'Loading scene...'}
+            </Text>
           </View>
 
           {/* Control Layout Preview */}
