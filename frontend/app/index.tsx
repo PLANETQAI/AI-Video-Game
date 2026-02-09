@@ -840,15 +840,18 @@ const GamePreviewAnimation = ({ genre, controlScheme, gameData }: any) => {
   );
 };
 
-// Genre data
+// Genre data - All 3D Game Types
 const GENRES = [
-  { id: 'action', name: 'Action Games', icon: 'flash', color: '#FF6B6B' },
-  { id: 'puzzle', name: 'Puzzle Games', icon: 'extension-puzzle', color: '#4ECDC4' },
-  { id: 'adventure', name: 'Adventure', icon: 'compass', color: '#45B7D1' },
-  { id: 'arcade', name: 'Arcade', icon: 'game-controller', color: '#96CEB4' },
-  { id: 'racing', name: 'Racing Game', icon: 'car-sport', color: '#FFEAA7' },
-  { id: 'rpg', name: 'RPG', icon: 'shield', color: '#DDA0DD' },
-  { id: 'shooter', name: 'Shooter Game', icon: 'locate', color: '#FF7675' },
+  { id: 'shooter', name: '3D Shooter', icon: 'locate', color: '#FF4444', description: 'FPS/TPS Action' },
+  { id: 'racing', name: '3D Racing', icon: 'car-sport', color: '#FFEAA7', description: 'High Speed' },
+  { id: 'sports', name: '3D Sports', icon: 'football', color: '#44FF44', description: 'Pro Sports' },
+  { id: 'adventure', name: '3D Adventure', icon: 'compass', color: '#45B7D1', description: 'Open World' },
+  { id: 'fighting', name: '3D Fighting', icon: 'hand-left', color: '#FF6B6B', description: 'Combat' },
+  { id: 'rpg', name: '3D RPG', icon: 'shield', color: '#DDA0DD', description: 'Fantasy' },
+  { id: 'platformer', name: '3D Platformer', icon: 'walk', color: '#96CEB4', description: 'Jump & Run' },
+  { id: 'horror', name: '3D Horror', icon: 'skull', color: '#8B0000', description: 'Survival' },
+  { id: 'simulation', name: '3D Simulation', icon: 'airplane', color: '#87CEEB', description: 'Realistic' },
+  { id: 'puzzle', name: '3D Puzzle', icon: 'extension-puzzle', color: '#4ECDC4', description: 'Brain Teaser' },
 ];
 
 const PLATFORMS = [
@@ -857,11 +860,65 @@ const PLATFORMS = [
   { id: 'unreal', name: 'Unreal C++', icon: 'hardware-chip' },
 ];
 
-const EXAMPLE_PROMPTS = [
+// Genre-specific example prompts
+const GENRE_PROMPTS: { [key: string]: string[] } = {
+  shooter: [
+    'A military shooter in a war-torn city with tactical combat...',
+    'A sci-fi shooter on a space station fighting alien invaders...',
+    'A zombie apocalypse shooter in an abandoned mall...',
+  ],
+  racing: [
+    'A street racing game in neon-lit Tokyo at night...',
+    'A Formula 1 simulator on famous world circuits...',
+    'An off-road rally racing through muddy jungle trails...',
+  ],
+  sports: [
+    'A professional football game in a packed stadium...',
+    'A basketball street court 3v3 competition...',
+    'A soccer World Cup final match experience...',
+  ],
+  adventure: [
+    'An ancient ruins explorer discovering lost civilizations...',
+    'A jungle adventure searching for hidden treasure...',
+    'A mountaineering expedition to reach the summit...',
+  ],
+  fighting: [
+    'A martial arts tournament with diverse fighting styles...',
+    'A street fighting game in urban environments...',
+    'A fantasy combat game with magical abilities...',
+  ],
+  rpg: [
+    'A medieval knight quest to slay a dragon...',
+    'A mage academy student learning powerful spells...',
+    'An epic journey to save the kingdom from darkness...',
+  ],
+  platformer: [
+    'A colorful world hopping adventure with collectibles...',
+    'A robot running through futuristic floating cities...',
+    'A magical forest platformer with elemental powers...',
+  ],
+  horror: [
+    'A haunted mansion exploration with supernatural enemies...',
+    'A hospital survival horror escaping experiments...',
+    'A dark forest survival against unknown creatures...',
+  ],
+  simulation: [
+    'A commercial airline pilot flying global routes...',
+    'A farming simulator building the ultimate farm...',
+    'A city builder creating a metropolis from scratch...',
+  ],
+  puzzle: [
+    'A portal-based puzzle game manipulating space...',
+    'A physics puzzle solving ancient temple mechanisms...',
+    'A time-manipulation puzzle changing past and future...',
+  ],
+};
+
+const DEFAULT_PROMPTS = [
   'A space shooter where you defend Earth from alien invasion...',
-  'A puzzle platformer with gravity-switching mechanics...',
-  'A retro-style racing game with power-ups and shortcuts...',
+  'A high-speed racing game through neon city streets...',
   'An RPG adventure in a magical forest with mystical creatures...',
+  'A survival horror game in an abandoned hospital...',
 ];
 
 export default function GameGenerator() {
@@ -877,6 +934,14 @@ export default function GameGenerator() {
   
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+
+  // Get example prompts based on selected genre
+  const getExamplePrompts = () => {
+    if (selectedGenre && GENRE_PROMPTS[selectedGenre]) {
+      return GENRE_PROMPTS[selectedGenre];
+    }
+    return DEFAULT_PROMPTS;
+  };
 
   useEffect(() => {
     // Pulse animation for the generate button
