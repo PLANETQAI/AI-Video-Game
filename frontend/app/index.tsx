@@ -257,27 +257,8 @@ const GameVideoPreview = ({ genre, gameData, prompt, characterDescription }: any
     </View>
   );
 };
-    ).start();
 
-    Animated.loop(
-      Animated.timing(cloudOffset, {
-        toValue: -300,
-        duration: 15000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    Animated.loop(
-      Animated.timing(groundOffset, {
-        toValue: -150,
-        duration: 3000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // Character idle pulse
+// Genre data - All 3D Game Types
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
