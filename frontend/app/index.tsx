@@ -1050,14 +1050,14 @@ export default function GameGenerator() {
       </View>
       <Text style={styles.exampleLabel}>Try an example:</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.examplesScroll}>
-        {EXAMPLE_PROMPTS.map((example, index) => (
+        {getExamplePrompts().map((example, index) => (
           <TouchableOpacity
             key={index}
             style={styles.exampleChip}
             onPress={() => handleExamplePrompt(example)}
           >
             <Text style={styles.exampleText} numberOfLines={1}>
-              {example.substring(0, 30)}...
+              {example.substring(0, 35)}...
             </Text>
           </TouchableOpacity>
         ))}
